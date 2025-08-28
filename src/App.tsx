@@ -16,6 +16,9 @@ function App() {
   const [startTime, setStartTime] = useState<string>('')
   const [endTime, setEndTime] = useState<string>('')
   
+  // 타이머 제목 상태 관리
+  const [timerTitle, setTimerTitle] = useState<string>('해커톤 타이머')
+  
   // 타이머 관련 상태
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(null)
   const [isTimerActive, setIsTimerActive] = useState(false)
@@ -35,6 +38,29 @@ function App() {
 
     return () => window.removeEventListener('resize', checkIsMobile)
   }, [])
+
+  // localStorage에서 데이터 불러오기
+  useEffect(() => {
+    const savedStartTime = localStorage.getItem('hackathon-timer-start')
+    const savedEndTime = localStorage.getItem('hackathon-timer-end')
+    const savedTitle = localStorage.getItem('hackathon-timer-title')
+    
+    if (savedStartTime) setStartTime(savedStartTime)
+    if (savedEndTime) setEndTime(savedEndTime)
+    if (savedTitle) setTimerTitle(savedTitle)
+  }, [])
+
+  // localStorage에 데이터 저장
+  const saveToLocalStorage = useCallback(() => {
+    localStorage.setItem('hackathon-timer-start', startTime)
+    localStorage.setItem('hackathon-timer-end', endTime)
+    localStorage.setItem('hackathon-timer-title', timerTitle)
+  }, [startTime, endTime, timerTitle])
+
+  // 입력값 변경 시 자동 저장
+  useEffect(() => {
+    saveToLocalStorage()
+  }, [saveToLocalStorage])
 
   // 시간 차이 계산 함수
   const calculateTimeRemaining = useCallback((start: string, end: string): TimeRemaining | null => {
@@ -102,6 +128,21 @@ function App() {
     setTimeRemaining(null);
   }, []);
 
+  // Clear 버튼 함수
+  const clearInputs = useCallback(() => {
+    setStartTime('');
+    setEndTime('');
+    setTimerTitle('해커톤 타이머');
+    setIsTimerActive(false);
+    setTimeRemaining(null);
+    setIsCompleted(false);
+    
+    // localStorage에서도 삭제
+    localStorage.removeItem('hackathon-timer-start');
+    localStorage.removeItem('hackathon-timer-end');
+    localStorage.removeItem('hackathon-timer-title');
+  }, []);
+
   // 키보드 단축키 처리
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -114,7 +155,7 @@ function App() {
           stopTimer()
         }
       }
-
+      
       // Escape로 타이머 정지
       if (event.key === 'Escape' && isTimerActive) {
         stopTimer()
@@ -219,7 +260,7 @@ function App() {
     const now = new Date();
     const start = new Date(now);
     const end = new Date(now.getTime() + hours * 60 * 60 * 1000);
-
+    
     // ISO 형식으로 변환 (datetime-local input에 맞춤)
     const formatDateTime = (date: Date) => {
       const year = date.getFullYear();
@@ -229,7 +270,7 @@ function App() {
       const minute = String(date.getMinutes()).padStart(2, '0');
       return `${year}-${month}-${day}T${hour}:${minute}`;
     };
-
+    
     setStartTime(formatDateTime(start));
     setEndTime(formatDateTime(end));
   };
@@ -237,36 +278,46 @@ function App() {
   return (
     <div className="app">
       <div className="container">
-        <h1 className="title">🏆 해커톤 타이머</h1>
+        {/* 타이머 제목 편집 */}
+        <div className="title-section">
+          <input
+            type="text"
+            value={timerTitle}
+            onChange={(e) => setTimerTitle(e.target.value)}
+            className="title-input"
+            placeholder="타이머 제목을 입력하세요"
+            disabled={isTimerActive}
+          />
+        </div>
         
         {/* 빠른 설정 버튼들 (모바일에서 유용) */}
         {!isTimerActive && (
           <div className="quick-setup">
             <p className="quick-setup-label">빠른 설정</p>
             <div className="quick-buttons">
-              <button
-                className="quick-btn"
+              <button 
+                className="quick-btn" 
                 onClick={() => setQuickTime(1)}
                 title="1시간 타이머"
               >
                 1시간
               </button>
-              <button
-                className="quick-btn"
+              <button 
+                className="quick-btn" 
                 onClick={() => setQuickTime(2)}
                 title="2시간 타이머"
               >
                 2시간
               </button>
-              <button
-                className="quick-btn"
+              <button 
+                className="quick-btn" 
                 onClick={() => setQuickTime(4)}
                 title="4시간 타이머"
               >
                 4시간
               </button>
-              <button
-                className="quick-btn"
+              <button 
+                className="quick-btn" 
                 onClick={() => setQuickTime(8)}
                 title="8시간 타이머"
               >
@@ -275,7 +326,7 @@ function App() {
             </div>
           </div>
         )}
-
+        
         {/* 시간 입력 섹션 */}
         <div className="input-section">
           <div className="input-group">
@@ -304,19 +355,28 @@ function App() {
         {/* 컨트롤 버튼 */}
         <div className="control-section">
           {!isTimerActive ? (
-            <button
-              onClick={startTimer}
-              className="btn btn-primary"
-              title={isMobile ? "타이머 시작" : "타이머 시작 (Ctrl+Enter)"}
-            >
-              타이머 시작
-            </button>
-          ) : (
-              <button
-                onClick={stopTimer}
-                className="btn btn-secondary"
-                title={isMobile ? "타이머 정지" : "타이머 정지 (Escape)"}
+            <>
+              <button 
+                onClick={startTimer} 
+                className="btn btn-primary"
+                title={isMobile ? "타이머 시작" : "타이머 시작 (Ctrl+Enter)"}
               >
+                타이머 시작
+              </button>
+              <button 
+                onClick={clearInputs} 
+                className="btn btn-clear"
+                title="모든 입력값 초기화"
+              >
+                초기화
+              </button>
+            </>
+          ) : (
+            <button 
+              onClick={stopTimer} 
+              className="btn btn-secondary"
+              title={isMobile ? "타이머 정지" : "타이머 정지 (Escape)"}
+            >
               타이머 정지
             </button>
           )}
@@ -327,7 +387,7 @@ function App() {
           <div className="timer-section">
             {isCompleted ? (
               <div className="completion-message">
-                <h2>🎉 해커톤 완료!</h2>
+                <h2>🎉 {timerTitle} 완료!</h2>
                 <p>수고하셨습니다!</p>
               </div>
             ) : (

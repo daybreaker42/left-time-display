@@ -108,7 +108,9 @@ body {
 .control-section {
   display: flex;
   justify-content: center;
+  gap: 16px;
   margin-bottom: 40px;
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -142,6 +144,16 @@ body {
 .btn-secondary:hover {
   transform: translateY(-2px);
   box-shadow: 0 35px 60px -12px rgba(100, 116, 139, 0.4);
+}
+
+.btn-clear {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+}
+
+.btn-clear:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 35px 60px -12px rgba(239, 68, 68, 0.4);
 }
 
 /* 타이머 섹션 */
@@ -593,10 +605,41 @@ body {
   animation: fadeIn 0.8s ease-out;
 }
 
-/* 빠른 설정 섹션 */
-.quick-setup {
+/* 타이머 제목 편집 섹션 */
+.title-section {
   margin-bottom: 32px;
   text-align: center;
+}
+
+.title-input {
+  width: 100%;
+  max-width: 400px;
+  padding: 16px 20px;
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  background: var(--background-color);
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.title-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.title-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--surface-color);
+}
+
+.title-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
 }
 
 .quick-setup-label {
