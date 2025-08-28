@@ -21,6 +21,21 @@ function App() {
   const [isTimerActive, setIsTimerActive] = useState(false)
   const [isCompleted, setIsCompleted] = useState(false)
 
+  // 반응형 상태 감지
+  const [isMobile, setIsMobile] = useState(false)
+
+  // 화면 크기 감지
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+
+    checkIsMobile()
+    window.addEventListener('resize', checkIsMobile)
+
+    return () => window.removeEventListener('resize', checkIsMobile)
+  }, [])
+
   // 시간 차이 계산 함수
   const calculateTimeRemaining = useCallback((start: string, end: string): TimeRemaining | null => {
     if (!start || !end) return null;
@@ -63,7 +78,7 @@ function App() {
   }, []);
 
   // 타이머 시작 함수
-  const startTimer = () => {
+  const startTimer = useCallback(() => {
     if (!startTime || !endTime) {
       alert('시작 시간과 종료 시간을 모두 입력해주세요!');
       return;
@@ -79,17 +94,40 @@ function App() {
     
     setIsTimerActive(true);
     setIsCompleted(false);
-  };
+  }, [startTime, endTime]);
 
   // 타이머 정지 함수
-  const stopTimer = () => {
+  const stopTimer = useCallback(() => {
     setIsTimerActive(false);
     setTimeRemaining(null);
-  };
+  }, []);
+
+  // 키보드 단축키 처리
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Ctrl/Cmd + Enter로 타이머 시작/정지
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault()
+        if (!isTimerActive) {
+          startTimer()
+        } else {
+          stopTimer()
+        }
+      }
+
+      // Escape로 타이머 정지
+      if (event.key === 'Escape' && isTimerActive) {
+        stopTimer()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyPress)
+    return () => document.removeEventListener('keydown', handleKeyPress)
+  }, [isTimerActive, startTimer, stopTimer])
 
   // 타이머 업데이트 (1초마다 실행)
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: number | null = null;
     
     if (isTimerActive) {
       interval = setInterval(() => {
@@ -117,11 +155,12 @@ function App() {
     return Math.min(100, Math.max(0, (elapsed / timeRemaining.totalDuration) * 100));
   };
 
-  // 원형 프로그레스 바 생성
+  // 원형 프로그레스 바 생성 (반응형 크기)
   const renderCircularProgress = () => {
     const progress = getProgress();
-    const radius = 120;
-    const strokeWidth = 12;
+    // 화면 크기에 따라 반지름 조정
+    const radius = isMobile ? (window.innerWidth <= 479 ? 90 : 110) : 120;
+    const strokeWidth = isMobile ? 10 : 12;
     const normalizedRadius = radius - strokeWidth * 2;
     const circumference = normalizedRadius * 2 * Math.PI;
     const strokeDasharray = `${circumference} ${circumference}`;
@@ -175,11 +214,68 @@ function App() {
     );
   };
 
+  // 빠른 시간 설정 함수 (모바일 최적화)
+  const setQuickTime = (hours: number) => {
+    const now = new Date();
+    const start = new Date(now);
+    const end = new Date(now.getTime() + hours * 60 * 60 * 1000);
+
+    // ISO 형식으로 변환 (datetime-local input에 맞춤)
+    const formatDateTime = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hour = String(date.getHours()).padStart(2, '0');
+      const minute = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hour}:${minute}`;
+    };
+
+    setStartTime(formatDateTime(start));
+    setEndTime(formatDateTime(end));
+  };
+
   return (
     <div className="app">
       <div className="container">
         <h1 className="title">🏆 해커톤 타이머</h1>
         
+        {/* 빠른 설정 버튼들 (모바일에서 유용) */}
+        {!isTimerActive && (
+          <div className="quick-setup">
+            <p className="quick-setup-label">빠른 설정</p>
+            <div className="quick-buttons">
+              <button
+                className="quick-btn"
+                onClick={() => setQuickTime(1)}
+                title="1시간 타이머"
+              >
+                1시간
+              </button>
+              <button
+                className="quick-btn"
+                onClick={() => setQuickTime(2)}
+                title="2시간 타이머"
+              >
+                2시간
+              </button>
+              <button
+                className="quick-btn"
+                onClick={() => setQuickTime(4)}
+                title="4시간 타이머"
+              >
+                4시간
+              </button>
+              <button
+                className="quick-btn"
+                onClick={() => setQuickTime(8)}
+                title="8시간 타이머"
+              >
+                8시간
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 시간 입력 섹션 */}
         <div className="input-section">
           <div className="input-group">
@@ -208,11 +304,19 @@ function App() {
         {/* 컨트롤 버튼 */}
         <div className="control-section">
           {!isTimerActive ? (
-            <button onClick={startTimer} className="btn btn-primary">
+            <button
+              onClick={startTimer}
+              className="btn btn-primary"
+              title={isMobile ? "타이머 시작" : "타이머 시작 (Ctrl+Enter)"}
+            >
               타이머 시작
             </button>
           ) : (
-            <button onClick={stopTimer} className="btn btn-secondary">
+              <button
+                onClick={stopTimer}
+                className="btn btn-secondary"
+                title={isMobile ? "타이머 정지" : "타이머 정지 (Escape)"}
+              >
               타이머 정지
             </button>
           )}
@@ -247,6 +351,15 @@ function App() {
                 {timeRemaining.totalSeconds}초
               </span>
             </div>
+          </div>
+        )}
+
+        {/* 키보드 단축키 안내 (데스크톱에서만 표시) */}
+        {!isMobile && (
+          <div className="keyboard-shortcuts">
+            <p className="shortcuts-text">
+              💡 <strong>Ctrl+Enter</strong>: 타이머 시작/정지 | <strong>Escape</strong>: 타이머 정지
+            </p>
           </div>
         )}
       </div>
