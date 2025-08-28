@@ -1,0 +1,257 @@
+import { useState, useEffect, useCallback } from 'react'
+import './App.css'
+
+// 시간 인터페이스 정의
+interface TimeRemaining {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  totalSeconds: number;
+  totalDuration: number;
+}
+
+function App() {
+  // 시작 시간과 종료 시간 상태 관리
+  const [startTime, setStartTime] = useState<string>('')
+  const [endTime, setEndTime] = useState<string>('')
+  
+  // 타이머 관련 상태
+  const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(null)
+  const [isTimerActive, setIsTimerActive] = useState(false)
+  const [isCompleted, setIsCompleted] = useState(false)
+
+  // 시간 차이 계산 함수
+  const calculateTimeRemaining = useCallback((start: string, end: string): TimeRemaining | null => {
+    if (!start || !end) return null;
+    
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const now = new Date();
+    
+    // 전체 기간 계산 (초 단위)
+    const totalDuration = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
+    
+    // 남은 시간 계산 (초 단위)
+    const remainingMs = endDate.getTime() - now.getTime();
+    const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+    
+    if (totalSeconds <= 0) {
+      return {
+        days: 0,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        totalSeconds: 0,
+        totalDuration
+      };
+    }
+    
+    const days = Math.floor(totalSeconds / (24 * 3600));
+    const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    return {
+      days,
+      hours,
+      minutes,
+      seconds,
+      totalSeconds,
+      totalDuration
+    };
+  }, []);
+
+  // 타이머 시작 함수
+  const startTimer = () => {
+    if (!startTime || !endTime) {
+      alert('시작 시간과 종료 시간을 모두 입력해주세요!');
+      return;
+    }
+    
+    const startDate = new Date(startTime);
+    const endDate = new Date(endTime);
+    
+    if (startDate >= endDate) {
+      alert('종료 시간이 시작 시간보다 나중이어야 합니다!');
+      return;
+    }
+    
+    setIsTimerActive(true);
+    setIsCompleted(false);
+  };
+
+  // 타이머 정지 함수
+  const stopTimer = () => {
+    setIsTimerActive(false);
+    setTimeRemaining(null);
+  };
+
+  // 타이머 업데이트 (1초마다 실행)
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (isTimerActive) {
+      interval = setInterval(() => {
+        const remaining = calculateTimeRemaining(startTime, endTime);
+        setTimeRemaining(remaining);
+        
+        // 시간이 다 되었을 때
+        if (remaining && remaining.totalSeconds <= 0) {
+          setIsCompleted(true);
+          setIsTimerActive(false);
+        }
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isTimerActive, startTime, endTime, calculateTimeRemaining]);
+
+  // 진행률 계산 (0-100%)
+  const getProgress = (): number => {
+    if (!timeRemaining || timeRemaining.totalDuration <= 0) return 0;
+    
+    const elapsed = timeRemaining.totalDuration - timeRemaining.totalSeconds;
+    return Math.min(100, Math.max(0, (elapsed / timeRemaining.totalDuration) * 100));
+  };
+
+  // 원형 프로그레스 바 생성
+  const renderCircularProgress = () => {
+    const progress = getProgress();
+    const radius = 120;
+    const strokeWidth = 12;
+    const normalizedRadius = radius - strokeWidth * 2;
+    const circumference = normalizedRadius * 2 * Math.PI;
+    const strokeDasharray = `${circumference} ${circumference}`;
+    const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+    return (
+      <div className="circular-progress">
+        <svg
+          height={radius * 2}
+          width={radius * 2}
+          className="progress-ring"
+        >
+          {/* 배경 원 */}
+          <circle
+            stroke="#e5e7eb"
+            fill="transparent"
+            strokeWidth={strokeWidth}
+            r={normalizedRadius}
+            cx={radius}
+            cy={radius}
+          />
+          {/* 진행률 원 */}
+          <circle
+            stroke={isCompleted ? "#10b981" : "#3b82f6"}
+            fill="transparent"
+            strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
+            style={{ strokeDashoffset }}
+            r={normalizedRadius}
+            cx={radius}
+            cy={radius}
+            className="progress-circle"
+          />
+        </svg>
+        <div className="progress-text">
+          <div className="progress-percentage">{Math.round(progress)}%</div>
+          {timeRemaining && (
+            <div className="time-display">
+              <div className="time-large">
+                {String(timeRemaining.hours).padStart(2, '0')}:
+                {String(timeRemaining.minutes).padStart(2, '0')}:
+                {String(timeRemaining.seconds).padStart(2, '0')}
+              </div>
+              {timeRemaining.days > 0 && (
+                <div className="days-display">{timeRemaining.days}일 남음</div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="app">
+      <div className="container">
+        <h1 className="title">🏆 해커톤 타이머</h1>
+        
+        {/* 시간 입력 섹션 */}
+        <div className="input-section">
+          <div className="input-group">
+            <label htmlFor="start-time">시작 시간</label>
+            <input
+              id="start-time"
+              type="datetime-local"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              disabled={isTimerActive}
+            />
+          </div>
+          
+          <div className="input-group">
+            <label htmlFor="end-time">종료 시간</label>
+            <input
+              id="end-time"
+              type="datetime-local"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              disabled={isTimerActive}
+            />
+          </div>
+        </div>
+
+        {/* 컨트롤 버튼 */}
+        <div className="control-section">
+          {!isTimerActive ? (
+            <button onClick={startTimer} className="btn btn-primary">
+              타이머 시작
+            </button>
+          ) : (
+            <button onClick={stopTimer} className="btn btn-secondary">
+              타이머 정지
+            </button>
+          )}
+        </div>
+
+        {/* 타이머 디스플레이 */}
+        {(isTimerActive || isCompleted) && (
+          <div className="timer-section">
+            {isCompleted ? (
+              <div className="completion-message">
+                <h2>🎉 해커톤 완료!</h2>
+                <p>수고하셨습니다!</p>
+              </div>
+            ) : (
+              renderCircularProgress()
+            )}
+          </div>
+        )}
+
+        {/* 상태 정보 */}
+        {timeRemaining && !isCompleted && (
+          <div className="stats-section">
+            <div className="stat-item">
+              <span className="stat-label">전체 시간</span>
+              <span className="stat-value">
+                {Math.floor(timeRemaining.totalDuration / 3600)}시간 {Math.floor((timeRemaining.totalDuration % 3600) / 60)}분
+              </span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">남은 시간</span>
+              <span className="stat-value">
+                {timeRemaining.totalSeconds}초
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default App
