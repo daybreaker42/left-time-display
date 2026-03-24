@@ -199,10 +199,11 @@ function App() {
   // 원형 프로그레스 바 생성 (반응형 크기)
   const renderCircularProgress = () => {
     const progress = getProgress();
-    // 화면 크기에 따라 반지름 조정
-    const radius = isMobile ? (window.innerWidth <= 479 ? 90 : 110) : 120;
-    const strokeWidth = isMobile ? 10 : 12;
-    const normalizedRadius = radius - strokeWidth * 2;
+    // 가로 너비에 맞춰 유동적으로 크기가 변하도록 뷰박스(viewBox) 사용
+    const size = 300; // 기준 사이즈
+    const strokeWidth = 15;
+    const radius = size / 2;
+    const normalizedRadius = radius - strokeWidth;
     const circumference = normalizedRadius * 2 * Math.PI;
     const strokeDasharray = `${circumference} ${circumference}`;
     const strokeDashoffset = circumference - (progress / 100) * circumference;
@@ -210,8 +211,8 @@ function App() {
     return (
       <div className="circular-progress">
         <svg
-          height={radius * 2}
-          width={radius * 2}
+          viewBox={`0 0 ${size} ${size}`}
+          preserveAspectRatio="xMidYMid meet"
           className="progress-ring"
         >
           {/* 배경 원 */}
